@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
-from random import randint, random
+from random import random, randint
 import time
 import copy
 
 import numpy as np
 from scipy import stats
+
+from deap import base, creator, tools, algorithms
+
 import matplotlib.pyplot as plt
 
 
@@ -724,7 +727,6 @@ The degree of similarity between the system recommended screening rate and the a
 
 manager = Manager.from_data(halls, movies)
 
-
 from deap import tools
 
 def mutRandom(individual, indpb1, indpb2):
@@ -758,54 +760,101 @@ def mutRandom(individual, indpb1, indpb2):
         return individual
 
 
-from pyrimidine import BaseIndividual, HOFPopulation
-from pyrimidine.deco import side_effect, fitness_cache
+manager = Manager.from_data(halls, movies)
+
+# 构造适应度函数和个体类型
+creator.create("FitnessMax", base.Fitness, weights=(1, 1, 1, 1))
+creator.create("Individual", list, fitness=creator.FitnessMax)
+
+toolbox = base.Toolbox()    # 定义遗传算法工具箱
+
+# toolbox.register("time", random.randint, 0, 11)          # 基因种数
+
+# for h in manager.halls:
+#     toolbox.register(str(h), tools.initCycle, list, (toolbox.time, h.random), 6)
+
+# schedule = tuple(getattr(toolbox, str(h)) for h in manager.halls)
+
+# define the population
+toolbox.register("individual", manager.initSchedule, hook=creator.Individual)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 
-class Chromosome(list):
+def evalfit(individual):
+    manager.schedule(individual)
+    return manager.fitness()
 
-    def copy(self, type_=None):
-        return copy.deepcopy(self)
+# p = [h.seatn for h in manager.halls]
+# H = stats.rv_discrete(name='hall', values=(np.arange(0, halln), p / np.sum(p)))
 
-    def cross(self, other):
-        k = randint(1, len(self)-1)
-        return self.__class__(np.concatenate((self[:k], other[k:]), axis=0))
+def mycx(ind1, ind2):
+    h = np.random.randint(0, halln)
+    ind1[h][::2], ind2[h][::2] = tools.cxTwoPoint(ind2[h][::2], ind1[h][::2])
+    return ind1, ind2
 
 
-@fitness_cache
-class Individual(BaseIndividual):
-
-    element_class = Chromosome
-
-    @side_effect
-    def mutate(self):
-        self[:] = mutRandom(self, indpb1=0.15, indpb2=0.8)
-
-    def cross(self, other):
-        s1 = set(h[0] for h in self)
-        s2 = set(h[0] for h in other)
-        if random() > 1/(len(s1.symmetric_difference(s2))+1):
-            return super().cross(other)
+def mutRandom(individual, indpb1, indpb2):
+    for k, hall in enumerate(individual):
+        if random() < indpb1:
+            # if k in individual.gmovies:
+            #     lg = individual.gmovies[k]
+            #     ms = hall[1::2]
+            #     mg = ms.pop(lg)
+            #     i = np.random.randint(0, len(ms))
+            #     for m in ms:
+            #         if m != ms[i]:
+            #             ms[i] = m
+            #         break
+            #     ms.insert(lg, mg)
+            # else:
+            ms = hall[1::2]
+            i = np.random.randint(0, len(ms))
+            for m in ms:
+                if m != ms[i]:
+                    ms[i] = m
+                break
+            hall[1::2] = ms
         else:
-            return self.copy()
+            for i in range(0, len(hall)-1, 2):
+                if random() < indpb2:
+                    AT = [t for t in range(12) if t != hall[i]]
+                    p = np.ones(11) / 11
+                    T = stats.rv_discrete(name='time', values=(AT, p))
+                    hall[i] = T.rvs(size=1)[0]
+        return individual,
 
-    def _fitness(self):
-        manager.schedule(self)
-        return sum(manager.fitness())
+
+# def permRandom(individual, ppb, indpb1, indpb2):
+#     halln = len(individual)
+#     if random.random() < ppb:
+#         h = np.random.randint(0, halln-1)
+#         individual[h], individual[h+1] = tools.cxTwoPoint(individual[h], individual[h+1])
+
+#     individual, = mutRandom(individual, indpb1, indpb2)
+#     # else:
+#     #     i, j = np.random.randint(0, halln-1, 2)
+#     #     individual[i], individual[j] = individual[j], individual[i]
+#     return individual,
 
 
-Population = HOFPopulation[Individual]
+toolbox.register("evaluate", evalfit)
+toolbox.register("mate", mycx)
+toolbox.register("mutate", mutRandom, indpb1=0.2, indpb2=0.8)
+toolbox.register("select", tools.selTournament, tournsize=5)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    import multiprocessing
+    pool = multiprocessing.Pool()
 
-    pop = Population([manager.initSchedule() for _ in range(50)])
-    pop.evolve()
-    ind = pop.best_individual
-
+    toolbox.register("map", pool.map)
+    pop = toolbox.population(50)
+    ind = tools.selBest(pop, 1)[0]
     manager.schedule(ind)
     manager.print_fitness()
-
-    manager.check()
+    algorithms.eaSimple(pop, toolbox, cxpb=0.7, mutpb=1, ngen=20, verbose=False)
+    algorithms.eaSimple(pop, toolbox, cxpb=0.6, mutpb=0.18, ngen=80, verbose=False)
+    ind = tools.selBest(pop, 1)[0]
+    manager.schedule(ind)
+    manager.print_fitness()
     manager.dumps()
     manager.plot()
-    manager.print_criterion()

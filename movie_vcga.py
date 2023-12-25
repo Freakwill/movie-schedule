@@ -6,8 +6,6 @@ from movie_problem import *
 # define the multi-population
 toolbox.register("populations", tools.initRepeat, list, lambda:toolbox.population(40), 20)
 
-toolbox.register("mutate", mutRandom, indpb1=0.15, indpb2=0.8)
-toolbox.register("select", tools.selTournament, tournsize=5)
 
 if __name__ == "__main__":
     import multiprocessing

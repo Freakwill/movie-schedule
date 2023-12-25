@@ -750,7 +750,7 @@ def mutRandom(individual, indpb1, indpb2):
             for i in range(2, len(hall)-1, 2):
                 if random() < indpb2:
                     hall[i] = np.random.choice([t for t in range(gapub) if t != hall[i]])
-        h = np.random.randint(0, halln-1)
+        h = randint(0, halln-1)
         if random() < 0.3:
             individual[h], individual[h+1] = individual[h+1], individual[h]
         else:

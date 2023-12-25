@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-'''variants of Canonical genetic algorithm'''
+'''Variants of canonical genetic algorithm
+'''
 
 import copy
 from random import randint
@@ -11,8 +12,8 @@ from deap import tools
 
 class VCGA:
     '''AdaptiveGA has 3 (principal) propteries
-    algorithm: algorithm
-    epochs: epochs
+    algorithm: an genetic algorithm
+    epochs: iterations of the algorithm
     groups: groups [2]
     '''
 
@@ -40,9 +41,11 @@ class VCGA:
 
 class BaseAdaptiveGA(VCGA):
     '''BaseAdaptiveGA: base class for adpative ga
-    algorithm: algorithm
-    epochs: epochs
-    groups: groups [2]'''
+    algorithm: an genetic algorithm
+    epochs: iterations of the algorithm
+    groups: groups [2]
+    '''
+
     def __init__(self, algorithm, epochs=5):
         super().__init__(algorithm)
         self.epochs = epochs
@@ -86,11 +89,12 @@ class AdaptiveGA(BaseAdaptiveGA):
 
 class HierarchicGA(VCGA):
     '''HierarchicGA has 2 (principal) propteries
-    algorithm: algorithm
-    groupn: groupn'''
+    algorithm: an genetic algorithm
+    groupn: groupn
+    '''
+
     def __init__(self, algorithm, groupn=10):
-        super().__init__()
-        self.algorithm = algorithm
+        super().__init__(algorithm)
         self.groupn = groupn
 
     def generate_populations(self, creator):
@@ -130,15 +134,14 @@ class HierarchicGA(VCGA):
 import threading
 
 class BaseParallelGA(VCGA):
-    '''BaseParallelGA: base class for parallel ga
-    algorithm: algorithm
-    epochs: epochs
+    '''BaseParallelGA: base class for parallel GA
+    algorithm: an genetic algorithm
+    epochs: iterations of the algorithm
     send_best: send best [5]
     '''
 
     def __init__(self, algorithm, epochs, send_best=5):
         super().__init__(algorithm)
-        self.algorithm = algorithm
         self.epochs = epochs
         self.send_best = send_best
 
@@ -146,16 +149,12 @@ class BaseParallelGA(VCGA):
         for _ in range(self.epochs):
             self.evolute(populations, toolbox, *args, **kwargs)
             self.migrate(populations)
-            # ind = tools.selBest(populations[0], 1)[0]
-            # print(ind.fitness.values)
 
     def evolute(self, populations, toolbox, *args, **kwargs):
         #for pop in populations:
         #    self.algorithm(pop, toolbox, *args, **kwargs)
         threads = [threading.Thread(target=self.algorithm, args=(pop, toolbox)+args, kwargs=kwargs) for pop in populations]
-        # #threads = []
-        # #for pop in populations:
-        # #    threads.append(threading.Thread(target=self.algorithm, args=(pop, toolbox)+args, kwargs=kwargs))
+
         for t in threads:
             t.daemon = True
             t.start()
@@ -167,10 +166,8 @@ class BaseParallelGA(VCGA):
 
     @classmethod
     def selBest(cls, populations):
-        pop = []
-        for p in populations:
-            pop.extend(p)
-        return tools.selBest(pop, 1)[0]
+        best_pop = [tools.selBest(pop, 1)[0] for pop in populations]
+        return tools.selBest(best_pop, 1)[0]
 
     @classmethod
     def generate_populations(self, toolbox, creator, npop=5):
@@ -206,7 +203,7 @@ class RandomParallelGA(BaseParallelGA):
         N = len(populations)
         for k, pop in enumerate(populations):
             best, worst = tools.selBest(pop, self.send_best), tools.selWorst(pop, self.send_best)
-            l = randint(0, N)
+            l = randint(0, N-1)
             pop1 = populations[l]
             if l != k:
                 best1, worst1 = tools.selBest(pop1, self.send_best), tools.selWorst(pop1, self.send_best)
@@ -225,6 +222,7 @@ class ExchangeParallelGA(BaseParallelGA):
                 best1, worst1 = tools.selBest(pop1, self.send_best), tools.selWorst(pop1, self.send_best)
                 replace(pop, worst, best1)
                 replace(pop1, worst1, best)
+
 
 class RingParallelGA(BaseParallelGA):
     '''parallel ga with network topology
@@ -247,13 +245,13 @@ class RingParallelGA(BaseParallelGA):
 
 class BaseMimeticGA(VCGA):
     '''BaseMimeticGA has 2 (principal) propteries
-    algorithm: algorithm
-    epochs: epochs'''
-    def __init__(self, algorithm, epochs):
-        super().__init__()
-        self.algorithm = algorithm
-        self.epochs = epochs
+    algorithm: an genetic algorithm
+    epochs: iterations of the algorithm
+    '''
 
+    def __init__(self, algorithm, epochs):
+        super().__init__(algorithm)
+        self.epochs = epochs
 
     def __call__(self, population, toolbox, *args, **kwargs):
         for _ in range(self.epochs):
@@ -263,15 +261,11 @@ class BaseMimeticGA(VCGA):
     def local_search(self, population, toolbox):
         raise NotImplementedError
 
+
 class MimeticGA(BaseMimeticGA):
     '''MimeticGA has 2 (principal) propteries
     algorithm: algorithm
     epochs: epochs'''
-
-    def __init__(self, algorithm, epochs):
-        super(MimeticGA, self).__init__()
-        self.algorithm = algorithm
-        self.epochs = epochs
 
     def local_search(self, population, toolbox):
         pass
@@ -284,7 +278,7 @@ class BaseNeuralGA:
     epochs: epochs'''
 
     def __init__(self, algorithm, ann, epochs=10):
-        self.algorithm = algorithm
+        super().__init__(algorithm)
         self.ann = ann
         self.epochs = epochs
 
@@ -302,7 +296,6 @@ class BaseNeuralGA:
 
     def select(self):
         raise NotImplementedError
-
 
     def train(self, pop, fit, epochs=500):
         raise NotImplementedError
@@ -355,18 +348,12 @@ class NeuralGA(BaseNeuralGA):
     #     pop = population[10:]
     #     fits = []
     #     inds = []
-    #     print('-----------------------------')
-    #     print('population:')
     #     for k, ind in enumerate(pop, 1):
-    #         # give fitness 
-    #         print('\nindividual %d:'%k)
-    #         print('\n'.join(''.join('*' if a == 1 else ' ' for a in row) for row in ind))
     #         s = input('give fitness:')
     #         if s != '':
     #             fits.append(float(s))
     #             inds.append(ind)
     #     return inds, fits
-
 
     def train(self, pop, fit, epochs=500):
         popdata = np.array([ind for ind in pop])

@@ -752,7 +752,7 @@ def mutRandom(individual, indpb1, indpb2):
             for i in range(2, len(hall)-1, 2):
                 if random() < indpb2:
                     hall[i] = np.random.choice([t for t in range(gapub) if t != hall[i]])
-        h = np.random.randint(0, halln-1)
+        h = randint(0, halln-1)
         if random() < 0.3:
             individual[h], individual[h+1] = individual[h+1], individual[h]
         else:
@@ -761,23 +761,6 @@ def mutRandom(individual, indpb1, indpb2):
 
 
 manager = Manager.from_data(halls, movies)
-
-# 构造适应度函数和个体类型
-creator.create("FitnessMax", base.Fitness, weights=(1, 1, 1, 1))
-creator.create("Individual", list, fitness=creator.FitnessMax)
-
-toolbox = base.Toolbox()    # 定义遗传算法工具箱
-
-# toolbox.register("time", random.randint, 0, 11)          # 基因种数
-
-# for h in manager.halls:
-#     toolbox.register(str(h), tools.initCycle, list, (toolbox.time, h.random), 6)
-
-# schedule = tuple(getattr(toolbox, str(h)) for h in manager.halls)
-
-# define the population
-toolbox.register("individual", manager.initSchedule, hook=creator.Individual)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 
 def evalfit(individual):
@@ -788,7 +771,7 @@ def evalfit(individual):
 # H = stats.rv_discrete(name='hall', values=(np.arange(0, halln), p / np.sum(p)))
 
 def mycx(ind1, ind2):
-    h = np.random.randint(0, halln)
+    h = randint(0, halln-1)
     ind1[h][::2], ind2[h][::2] = tools.cxTwoPoint(ind2[h][::2], ind1[h][::2])
     return ind1, ind2
 
@@ -800,7 +783,7 @@ def mutRandom(individual, indpb1, indpb2):
             #     lg = individual.gmovies[k]
             #     ms = hall[1::2]
             #     mg = ms.pop(lg)
-            #     i = np.random.randint(0, len(ms))
+            #     i = randint(0, len(ms)-1)
             #     for m in ms:
             #         if m != ms[i]:
             #             ms[i] = m
@@ -808,7 +791,7 @@ def mutRandom(individual, indpb1, indpb2):
             #     ms.insert(lg, mg)
             # else:
             ms = hall[1::2]
-            i = np.random.randint(0, len(ms))
+            i = randint(0, len(ms)-1)
             for m in ms:
                 if m != ms[i]:
                     ms[i] = m
@@ -827,9 +810,8 @@ def mutRandom(individual, indpb1, indpb2):
 # def permRandom(individual, ppb, indpb1, indpb2):
 #     halln = len(individual)
 #     if random.random() < ppb:
-#         h = np.random.randint(0, halln-1)
+#         h = randint(0, halln-1)
 #         individual[h], individual[h+1] = tools.cxTwoPoint(individual[h], individual[h+1])
-
 #     individual, = mutRandom(individual, indpb1, indpb2)
 #     # else:
 #     #     i, j = np.random.randint(0, halln-1, 2)
@@ -837,10 +819,27 @@ def mutRandom(individual, indpb1, indpb2):
 #     return individual,
 
 
+# 构造适应度函数和个体类型
+creator.create("FitnessMax", base.Fitness, weights=(1, 1, 1, 1))
+creator.create("Individual", list, fitness=creator.FitnessMax)
+
+toolbox = base.Toolbox()    # 定义遗传算法工具箱
+
+# toolbox.register("time", randint, 0, 11)          # 基因种数
+
+# for h in manager.halls:
+#     toolbox.register(str(h), tools.initCycle, list, (toolbox.time, h.random), 6)
+
+# schedule = tuple(getattr(toolbox, str(h)) for h in manager.halls)
+
+# define the population and genetic operations
+toolbox.register("individual", manager.initSchedule, hook=creator.Individual)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("evaluate", evalfit)
 toolbox.register("mate", mycx)
 toolbox.register("mutate", mutRandom, indpb1=0.2, indpb2=0.8)
 toolbox.register("select", tools.selTournament, tournsize=5)
+
 
 if __name__ == "__main__":
     import multiprocessing

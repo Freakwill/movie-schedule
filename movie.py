@@ -675,7 +675,6 @@ The degree of similarity between the system recommended screening rate and the a
         for id_, rate in dict_.items():
             print(movies[id_][1]/100, rate)
 
-
     def plot(self, axes=None):
         from matplotlib.ticker import FuncFormatter, MaxNLocator
         if axes is None:
@@ -750,7 +749,7 @@ def mutRandom(individual, indpb1, indpb2):
             for i in range(2, len(hall)-1, 2):
                 if random() < indpb2:
                     hall[i] = np.random.choice([t for t in range(gapub) if t != hall[i]])
-        h = randint(0, halln-1)
+        h = randint(0, halln-2)
         if random() < 0.3:
             individual[h], individual[h+1] = individual[h+1], individual[h]
         else:
@@ -791,7 +790,7 @@ class Individual(BaseIndividual):
 
     def _fitness(self):
         manager.schedule(self)
-        return sum(manager.fitness())
+        return np.dot((50, 20, 2, 1), manager.fitness())
 
 
 Population = HOFPopulation[Individual]

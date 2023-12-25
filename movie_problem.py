@@ -678,7 +678,6 @@ The degree of similarity between the system recommended screening rate and the a
         for id_, rate in dict_.items():
             print(movies[id_][1]/100, rate)
 
-
     def plot(self, axes=None):
         from matplotlib.ticker import FuncFormatter, MaxNLocator
         if axes is None:
